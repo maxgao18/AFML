@@ -4,6 +4,8 @@ import datetime as dt
 
 from sklearn.datasets import make_classification
 
+import c
+
 
 def _ou_process(
     theta: float = 0.001, mu: float = 0.0, var: float = 0.01, n_samples: int = 1000000
@@ -35,6 +37,26 @@ def add_volume_data(df, mu: float = 100.0, var: float = 10.0):
     shape = mu / scale
     i = np.random.gamma(shape, scale, len(df.index))
     df["volume"] = np.ceil(i)
+    return df
+
+
+def add_dir_data(df, random=False):
+    direction = None
+    if random:
+        direction = np.random.choice([c.Dir.B, c.Dir.S], len(df.index))
+    else:
+        direction = np.full(len(df.index), c.Dir.U)
+        closes = df["close"]
+        previous_closes = df["close"].shift(1)
+        direction[0] = c.Dir.B
+        direction[closes > previous_closes] = c.Dir.B
+        direction[closes < previous_closes] = c.Dir.S
+
+        for i, e in enumerate(direction):
+            if e == c.Dir.U:
+                direction[i] = direction[i - 1]
+
+    df["dir"] = direction
     return df
 
 
