@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import pandas as pd
 
@@ -18,7 +20,7 @@ def _create_imbalance_bar_indices(
     expected_length: float,
     expected_abs_inbalance: float,
     min_observation_weight: float = 0.01,
-    max_length: int = 100,
+    max_length: int = sys.maxsize,
 ):
     observations = 0
     indices = np.full(values.size, False)
@@ -26,7 +28,7 @@ def _create_imbalance_bar_indices(
     current_inbalance = 0.0
     for i, (_, r) in enumerate(values.iteritems()):
         if (
-            abs(current_inbalance) > expected_length * expected_abs_inbalance
+            abs(current_inbalance) > np.sqrt(expected_length) * expected_abs_inbalance
             or current_length >= max_length
         ):
             indices[i] = True
@@ -35,9 +37,7 @@ def _create_imbalance_bar_indices(
             mean_inbalance = current_inbalance / current_length
 
             expected_length = w * current_length + (1 - w) * expected_length
-            expected_abs_inbalance = (
-                w * abs(mean_inbalance) + (1 - w) * expected_abs_inbalance
-            )
+            expected_abs_inbalance = w * abs(mean_inbalance) + (1 - w) * expected_abs_inbalance
 
             current_inbalance = 0.0
             current_length = 0
@@ -119,12 +119,8 @@ def create_volume_bars(data, rate):
     return _get_bars(g)
 
 
-def create_tick_imbalance_bars(
-    data, *, expected_length, expected_abs_inbalance=0.25, **kwargs
-):
-    indices = _create_imbalance_bar_indices(
-        data["dir"], expected_length, expected_abs_inbalance, **kwargs
-    )
+def create_tick_imbalance_bars(data, **kwargs):
+    indices = _create_imbalance_bar_indices(data["dir"],  **kwargs)
     g = _create_bars(data, indices)
     return _get_bars(g)
 
