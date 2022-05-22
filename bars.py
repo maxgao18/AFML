@@ -37,7 +37,9 @@ def _create_imbalance_bar_indices(
             mean_inbalance = current_inbalance / current_length
 
             expected_length = w * current_length + (1 - w) * expected_length
-            expected_abs_inbalance = w * abs(mean_inbalance) + (1 - w) * expected_abs_inbalance
+            expected_abs_inbalance = (
+                w * abs(mean_inbalance) + (1 - w) * expected_abs_inbalance
+            )
 
             current_inbalance = 0.0
             current_length = 0
@@ -120,7 +122,7 @@ def create_volume_bars(data, rate):
 
 
 def create_tick_imbalance_bars(data, **kwargs):
-    indices = _create_imbalance_bar_indices(data["dir"],  **kwargs)
+    indices = _create_imbalance_bar_indices(data["dir"], **kwargs)
     g = _create_bars(data, indices)
     return _get_bars(g)
 
