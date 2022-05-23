@@ -1,22 +1,22 @@
 import pandas as pd
 import numpy as np
 
+from collections.abc import Iterable
+
 import c
 
 
-def get_cusum_indices(prices: pd.Series, percentage_threshold: float = 0.05):
-    returns = prices.shift(1) / prices - 1
-    returns.fillna(0)
-    indices = np.full(prices.size, False)
+def get_cusum_indices(diff: pd.Series, threshold: float):
+    indices = np.full(diff.size, False)
 
     positive_cusum = 0.0
     negative_cusum = 0.0
-    for e, (_, r) in enumerate(returns.iteritems()):
+    for e, (_, r) in enumerate(diff.iteritems()):
         positive_cusum = max(0, positive_cusum + r)
         negative_cusum = min(0, negative_cusum + r)
         if (
-            positive_cusum > percentage_threshold
-            or negative_cusum < -percentage_threshold
+            positive_cusum > threshold
+            or negative_cusum < -threshold
         ):
             positive_cusum = 0
             negative_cusum = 0
@@ -24,8 +24,13 @@ def get_cusum_indices(prices: pd.Series, percentage_threshold: float = 0.05):
     return indices
 
 
+def get_cusum_indices_on_pct_returns(prices: pd.Series, percent_threshold: float = 0.05):
+    returns = prices.shift(1) / prices - 1
+    returns.fillna(0)
+    return get_cusum_indices(returns, percent_threshold)
+
 def _price_target_stop_loss_indices(
-    prices: pd.Series, target: float, side=c.Dir.B, price_target=None, stop_loss=None
+    prices: pd.Series, target: float, side, price_target=None, stop_loss=None
 ):
     if side == c.Dir.S:
         price_target, stop_loss = stop_loss, price_target
@@ -64,25 +69,30 @@ def get_price_target_stop_loss_indices(
 ):
     prices = data["close"]
     barriers = pd.DataFrame(columns=["pt_dt", "sl_dt"])
+    
+    if not isinstance(side, Iterable):
+        side = np.full(len(indices), side)
 
-    for i in indices:
+    for s, i in zip(side, indices):
         cond = data.index >= i
         if vertical_barrier is not None:
             cond = cond & (data.index <= i + vertical_barrier)
         u, l = _price_target_stop_loss_indices(
-            prices.loc[cond], target, side, price_target, stop_loss
+            prices.loc[cond], target, s, price_target, stop_loss
         )
         barriers.loc[i] = pd.Series(data={"pt_dt": u, "sl_dt": l}, name=data.index[0])
 
+    barriers["side"] = side
     return barriers
 
 
 def add_profit_target_stop_loss_outcome(barriers: pd.DataFrame):
-    pt = pd.isnull(barriers["pt_dt"])
-    sl = pd.isnull(barriers["sl_dt"])
+    pt = pd.notnull(barriers["pt_dt"])
+    sl = pd.notnull(barriers["sl_dt"])
     barriers["pt_sl"] = (
-        ((barriers["pt_dt"] < barriers["sl_dt"]) | (~pt & sl)) * c.TripleBarrier.PT
-        + ((barriers["pt_dt"] > barriers["sl_dt"]) | (pt & ~sl)) * c.TripleBarrier.SL
+        ((barriers["pt_dt"] < barriers["sl_dt"]) | (pt & ~sl)) * c.TripleBarrier.PT
+        + ((barriers["pt_dt"] > barriers["sl_dt"]) | (~pt & sl)) * c.TripleBarrier.SL
         + (~pt & ~sl) * c.TripleBarrier.N
     )
+    barriers["pt"] = (barriers["pt_sl"] == c.TripleBarrier.PT)
     return barriers

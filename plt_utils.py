@@ -10,17 +10,18 @@ def plot_triple_barrier(
     market_data: pd.DataFrame,
     barriers: pd.DataFrame,
     target: float,
-    side=c.Dir.B,
     price_target=None,
     stop_loss=None,
     vertical_barrier=None,
 ):
-    if side == c.Dir.S:
-        price_target, stop_loss = stop_loss, price_target
-
+    has_side = "side" in barriers.columns
     has_pt_sl = "pt_sl" in barriers.columns
 
     for start_dt in barriers.index:
+        side = barriers.at[start_dt, "side"] if has_side else c.Dir.B
+        if side == c.Dir.S:
+            price_target, stop_loss = stop_loss, price_target
+
         initial_price = market_data.at[start_dt, "close"]
         price_target_dt = barriers.at[start_dt, "pt_dt"]
         stop_loss_dt = barriers.at[start_dt, "sl_dt"]
@@ -31,8 +32,6 @@ def plot_triple_barrier(
             else vertical_barrier
         )
 
-        upper_color = "g" if side == c.Dir.B else "r"
-        lower_color = "r" if side == c.Dir.B else "g"
         if price_target is not None:
             upper_target = initial_price * (1 + target * price_target)
             rect = Rectangle(
@@ -41,7 +40,7 @@ def plot_triple_barrier(
                 upper_target - initial_price,
                 linestyle="dashed",
                 facecolor="None",
-                edgecolor=upper_color,
+                edgecolor="g" if side == c.Dir.B else "r",
             )
             ax.add_patch(rect)
         if stop_loss is not None:
@@ -52,7 +51,7 @@ def plot_triple_barrier(
                 lower_target - initial_price,
                 linestyle="dashed",
                 facecolor="None",
-                edgecolor=lower_color,
+                edgecolor="r" if side == c.Dir.B else "g",
             )
             ax.add_patch(rect)
         if pd.notnull(price_target_dt):
@@ -64,7 +63,7 @@ def plot_triple_barrier(
             ax.plot(
                 price_target_dt,
                 market_data.at[price_target_dt, "close"],
-                color=upper_color,
+                color="g",
                 marker=marker,
                 markersize=10,
             )
@@ -77,7 +76,7 @@ def plot_triple_barrier(
             ax.plot(
                 stop_loss_dt,
                 market_data.at[stop_loss_dt, "close"],
-                color=lower_color,
+                color="r",
                 marker=marker,
                 markersize=10,
             )
