@@ -115,7 +115,7 @@ def _get_fractional_differentiation_weights(derivative, threshold=None, size=Non
 
 
 def get_fixed_window_fractional_differentiated_series(
-    series: pd.Series, derivative: float, threshold=1e-3, size=None
+    series: pd.Series, derivative: float, threshold=1e-5, size=None
 ):
     weights = _get_fractional_differentiation_weights(derivative, threshold, size)
     weights = np.flip(weights)
@@ -125,3 +125,7 @@ def get_fixed_window_fractional_differentiated_series(
     for i in range(size, series.size):
         values[i] = np.dot(weights, series.iloc[i - size : i])
     return values
+
+
+def get_fractional_differentiated_series():
+    pass
