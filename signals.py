@@ -97,3 +97,31 @@ def add_profit_target_stop_loss_outcome(barriers: pd.DataFrame):
     )
     barriers["pt"] = barriers["pt_sl"] == c.TripleBarrier.PT
     return barriers
+
+
+def _get_fractional_differentiation_weights(derivative, threshold=None, size=None):
+    w = [1.0]
+    if size is not None:
+        for k in range(1, size):
+            w_ = -w[-1] * (derivative - k + 1) / k
+            w.append(w_)
+    else:
+        k = 1
+        while abs(w[-1]) > threshold:
+            w_ = -w[-1] * (derivative - k + 1) / k
+            w.append(w_)
+            k += 1
+    return np.array(w)
+
+
+def get_fixed_window_fractional_differentiated_series(
+    series: pd.Series, derivative: float, threshold=1e-3, size=None
+):
+    weights = _get_fractional_differentiation_weights(derivative, threshold, size)
+    weights = np.flip(weights)
+    size = len(weights)
+    values = np.full(series.size, np.nan)
+
+    for i in range(size, series.size):
+        values[i] = np.dot(weights, series.iloc[i - size : i])
+    return values
