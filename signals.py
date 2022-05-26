@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import statsmodels.tsa.stattools as st
 
 from collections.abc import Iterable
 
@@ -127,5 +128,33 @@ def get_fixed_window_fractional_differentiated_series(
     return values
 
 
-def get_fractional_differentiated_series():
-    pass
+def get_minimally_fractional_differentiated_series(
+    series: pd.Series,
+    tol=1e-2,
+    p_value_threshold=0.01,
+    window_threshold=1e-5,
+    window_size=None,
+):
+    p = st.adfuller(series)[1]
+    if p < p_value_threshold:
+        return series, 0, p
+
+    lower_bound, upper_bound = 0, 2
+    while upper_bound - lower_bound > tol:
+        mid = (upper_bound + lower_bound) / 2
+        fd = get_fixed_window_fractional_differentiated_series(
+            series, mid, threshold=window_threshold, size=window_size
+        )
+        fd = fd[~np.isnan(fd)]
+        p = st.adfuller(fd)[1]
+        if p < p_value_threshold:
+            upper_bound = mid
+        else:
+            lower_bound = mid
+
+    fd = get_fixed_window_fractional_differentiated_series(
+        series, upper_bound, threshold=window_threshold, size=window_size
+    )
+    fd_test = fd[~np.isnan(fd)]
+    p = st.adfuller(fd_test)[1]
+    return fd, upper_bound, p
