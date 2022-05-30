@@ -1,12 +1,18 @@
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
+import scipy.spatial.distance as ssd
 
 
 def variance(allocations, covariance_matrix):
     return np.dot(np.matmul(covariance_matrix, allocations), allocations)
 
 
+def linkage(return_series: pd.DataFrame):
+    distance = ((1 - return_series.corr()) / 2) ** 0.5
+    return sch.linkage(ssd.squareform(distance), "single")
+
+    
 def quasi_diagonalize(link, matrix: pd.DataFrame):
     leaves = sch.leaves_list(link)
     diagonal = [matrix.index[l] for l in leaves]
