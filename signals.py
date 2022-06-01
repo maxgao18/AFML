@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-import statsmodels.tsa.stattools as st
+import statsmodels.api as sm
+import statsmodels.tsa.stattools as sts
 
 from collections.abc import Iterable
 
@@ -135,7 +136,7 @@ def get_minimally_fractional_differentiated_series(
     window_threshold=1e-5,
     window_size=None,
 ):
-    p = st.adfuller(series)[1]
+    p = sts.adfuller(series)[1]
     if p < p_value_threshold:
         return series, 0, p
 
@@ -158,3 +159,38 @@ def get_minimally_fractional_differentiated_series(
     fd_test = fd[~np.isnan(fd)]
     p = st.adfuller(fd_test)[1]
     return fd, upper_bound, p
+
+
+def brown_durbin_evans_residuals(
+    predictor: pd.DataFrame,
+    response: pd.Series,
+    num_residuals: int,
+    add_constant: bool = True,
+    normalize: bool = True,
+):
+    index = predictor.index
+    predictor = predictor.to_numpy()
+    if add_constant:
+        predictor = sm.add_constant(predictor)
+    response = response.to_numpy()
+
+    start_index = predictor.shape[0] - num_residuals - 1
+    models = [
+        sm.OLS(response[: start_index + i], predictor[: start_index + i])
+        for i in range(num_residuals)
+    ]
+    results = []
+    fit = None
+    for m, x, y in zip(models, predictor[-num_residuals:], response[-num_residuals:]):
+        fit = m.fit()
+        error = y - fit.predict(x)[0]
+        vcov = fit.cov_params()
+        if isinstance(vcov, pd.DataFrame):
+            vcov = vcov.to_numpy()
+        se = np.sqrt(1 + np.dot(x, np.dot(x, vcov)))
+        results.append(error / se)
+    results /= np.sqrt(fit.scale)
+    results = pd.Series(results, index=index[-num_residuals:])
+    if normalize:
+        results /= results.std()
+    return results
