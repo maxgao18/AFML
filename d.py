@@ -14,10 +14,12 @@ def fetch(path, files, **kwargs):
     data = {}
     for f in files:
         name = f.split(".csv")[0]
-        data[name] = pd.read_csv(os.path.join(path, f), **kwargs)
+        data[name] = pd.read_csv(
+            os.path.join(path, f), index_col="Date", parse_dates=["Date"], **kwargs
+        )
 
     if len(files) == 1:
-        return data[files[0]]
+        return list(data.values())[0]
     return data
 
 

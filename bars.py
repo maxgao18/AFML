@@ -11,7 +11,8 @@ def _create_bar_indices(values: pd.Series, thres: float):
         if csum >= thres:
             csum = 0.0
             indices[e] = True
-        csum += r
+        if pd.notnull(r):
+            csum += r
     return indices
 
 
@@ -51,13 +52,13 @@ def _create_imbalance_bar_indices(
 
 def _group_bars(data, indices):
     groups = data.reset_index().groupby(indices.cumsum())
-    bars = groups[["volume"]].sum()
+    bars = groups[["Volume"]].sum()
     return groups, bars
 
 
 def _get_bars(group):
     groups, bars = group
-    bars.set_index(groups["index"].first(), inplace=True)
+    bars.set_index(groups["Date"].first(), inplace=True)
     return bars
 
 
@@ -69,25 +70,25 @@ def _with_dv(group):
 
 def _with_open(group):
     groups, bars = group
-    bars["open"] = groups["close"].first()
+    bars["Open"] = groups["Close"].first()
     return groups, bars
 
 
 def _with_low(group):
     groups, bars = group
-    bars["low"] = groups["close"].min()
+    bars["Low"] = groups["Close"].min()
     return groups, bars
 
 
 def _with_high(group):
     groups, bars = group
-    bars["high"] = groups["close"].max()
+    bars["High"] = groups["Close"].max()
     return groups, bars
 
 
 def _with_close(group):
     groups, bars = group
-    bars["close"] = groups["close"].last()
+    bars["Close"] = groups["Close"].last()
     return groups, bars
 
 
@@ -115,7 +116,7 @@ def create_dollar_volume_bars(data, rate):
 
 
 def create_volume_bars(data, rate):
-    indices = _create_bar_indices(data["volume"], rate)
+    indices = _create_bar_indices(data["Volume"], rate)
     g = _create_bars(data, indices)
     g = _with_dv(g)
     return _get_bars(g)
@@ -128,7 +129,7 @@ def create_tick_imbalance_bars(data, **kwargs):
 
 
 def create_volume_imbalance_bars(data, **kwargs):
-    indices = _create_imbalance_bar_indices(data["volume"] * data["dir"], **kwargs)
+    indices = _create_imbalance_bar_indices(data["Volume"] * data["dir"], **kwargs)
     g = _create_bars(data, indices)
     g = _with_dv(g)
     return _get_bars(g)

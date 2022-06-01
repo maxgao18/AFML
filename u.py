@@ -28,7 +28,8 @@ def create_price_data(
     df0 = pd.date_range(
         periods=n_samples, freq=pd.tseries.offsets.Minute(), end=dt.datetime.today()
     )
-    X = pd.Series(i, index=df0, name="close").round(2).to_frame()
+    X = pd.Series(i, index=df0, name="Close/Last").round(2).to_frame()
+    X.index.name = "Date"
     return X
 
 
@@ -36,7 +37,7 @@ def add_volume_data(df, mu: float = 100.0, var: float = 10.0):
     scale = var / mu
     shape = mu / scale
     i = np.random.gamma(shape, scale, len(df.index))
-    df["volume"] = np.ceil(i)
+    df["Volume"] = np.ceil(i)
     return df
 
 
@@ -46,8 +47,8 @@ def add_dir_data(df, random=False):
         direction = np.random.choice([c.Dir.B, c.Dir.S], len(df.index))
     else:
         direction = np.full(len(df.index), c.Dir.U)
-        closes = df["close"]
-        previous_closes = df["close"].shift(1)
+        closes = df["Close"]
+        previous_closes = df["Close"].shift(1)
         direction[0] = c.Dir.B
         direction[closes > previous_closes] = c.Dir.B
         direction[closes < previous_closes] = c.Dir.S

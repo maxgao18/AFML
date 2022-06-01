@@ -10,7 +10,7 @@ def _all_files(path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process some integers.")
+    parser = argparse.ArgumentParser(description="Format price data from investing.com")
     parser.add_argument("dir", type=str, help="Directory")
     parser.add_argument("tkr", type=str, help="Ticker")
     args = parser.parse_args()
@@ -25,12 +25,12 @@ if __name__ == "__main__":
     ]
     df = pd.concat(dfs)
     df = df[~df.index.duplicated(keep="first")]
-    df.sort_index(inplace=True, ascending=False)
-    df.rename(columns={"Vol.": "Volume", "Price": "Close/Last"}, inplace=True)
+    df.sort_index(inplace=True, ascending=True)
+    df.rename(columns={"Vol.": "Volume", "Price": "Close"}, inplace=True)
     df.drop(columns=["Change %"], inplace=True)
 
     print(df.dtypes)
-    for c in ["Close/Last", "Open", "High", "Low"]:
+    for c in ["Close", "Open", "High", "Low"]:
         df[c] = df[c].astype(str).str.replace(",", "").astype(float)
 
     for c in ["Volume"]:

@@ -22,7 +22,7 @@ def plot_triple_barrier(
         if side == c.Dir.S:
             price_target, stop_loss = stop_loss, price_target
 
-        initial_price = market_data.at[start_dt, "close"]
+        initial_price = market_data.at[start_dt, "Close"]
         price_target_dt = barriers.at[start_dt, "pt_dt"]
         stop_loss_dt = barriers.at[start_dt, "sl_dt"]
 
@@ -35,7 +35,7 @@ def plot_triple_barrier(
         if price_target is not None:
             upper_target = initial_price * (1 + target * price_target)
             rect = Rectangle(
-                (start_dt, market_data.at[start_dt, "close"]),
+                (start_dt, market_data.at[start_dt, "Close"]),
                 width,
                 upper_target - initial_price,
                 linestyle="dashed",
@@ -46,7 +46,7 @@ def plot_triple_barrier(
         if stop_loss is not None:
             lower_target = initial_price * (1 - target * stop_loss)
             rect = Rectangle(
-                (start_dt, market_data.at[start_dt, "close"]),
+                (start_dt, market_data.at[start_dt, "Close"]),
                 width,
                 lower_target - initial_price,
                 linestyle="dashed",
@@ -62,7 +62,7 @@ def plot_triple_barrier(
             )
             ax.plot(
                 price_target_dt,
-                market_data.at[price_target_dt, "close"],
+                market_data.at[price_target_dt, "Close"],
                 color="g",
                 marker=marker,
                 markersize=10,
@@ -75,7 +75,7 @@ def plot_triple_barrier(
             )
             ax.plot(
                 stop_loss_dt,
-                market_data.at[stop_loss_dt, "close"],
+                market_data.at[stop_loss_dt, "Close"],
                 color="r",
                 marker=marker,
                 markersize=10,

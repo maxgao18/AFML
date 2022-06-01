@@ -69,7 +69,7 @@ def get_price_target_stop_loss_indices(
     stop_loss=None,
     vertical_barrier=None,
 ):
-    prices = data["close"]
+    prices = data["Close"]
     barriers = pd.DataFrame(columns=["pt_dt", "sl_dt"])
 
     if not isinstance(side, Iterable):
@@ -147,7 +147,7 @@ def get_minimally_fractional_differentiated_series(
             series, mid, threshold=window_threshold, size=window_size
         )
         fd = fd[~np.isnan(fd)]
-        p = st.adfuller(fd)[1]
+        p = sts.adfuller(fd)[1]
         if p < p_value_threshold:
             upper_bound = mid
         else:
@@ -157,7 +157,7 @@ def get_minimally_fractional_differentiated_series(
         series, upper_bound, threshold=window_threshold, size=window_size
     )
     fd_test = fd[~np.isnan(fd)]
-    p = st.adfuller(fd_test)[1]
+    p = sts.adfuller(fd_test)[1]
     return fd, upper_bound, p
 
 
