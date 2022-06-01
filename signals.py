@@ -194,3 +194,25 @@ def brown_durbin_evans_residuals(
     if normalize:
         results /= results.std()
     return results
+
+
+def chu_stinchcombe_white_departure(series: pd.Series, start_index=None):
+    partial_series = series if start_index is None else series[start_index:]
+
+    rolling_std = np.square(series.diff().dropna()).cumsum()
+    rolling_std /= np.arange(1, series.size)
+    rolling_std = np.sqrt(rolling_std)
+
+    change = partial_series - partial_series.iloc[0]
+    scaled_std = rolling_std[change.index] * np.sqrt(np.arange(0, change.size))
+    scaled_std.replace(0, np.nan, inplace=True)
+
+    return (change / scaled_std).fillna(0)
+
+
+def chu_stinchcombe_white_critical_value(
+    series: pd.Series, b_alpha=4.6, start_index=None
+):
+    series = series if start_index is None else series[start_index:]
+    critical_values = np.sqrt(b_alpha + np.log(np.arange(1, len(series.index))))
+    return pd.Series(critical_values, index=series.iloc[1:].index)
