@@ -216,3 +216,22 @@ def chu_stinchcombe_white_critical_value(
     series = series if start_index is None else series[start_index:]
     critical_values = np.sqrt(b_alpha + np.log(np.arange(1, len(series.index))))
     return pd.Series(critical_values, index=series.iloc[1:].index)
+
+
+def chow_type_dickey_fuller_statistic(
+    series: pd.Series,
+    avoid_endpoints_percent: float = 0,
+):
+    test_indicies = series.index[1:-1]
+    if avoid_endpoints_percent > 0:
+        start_idx = int(len(series.index) * avoid_endpoints_percent)
+        end_idx = int(len(series.index) * (1 - avoid_endpoints_percent))
+        test_indicies = series.iloc[start_idx + 1 : end_idx].index
+
+    diffs = series.diff()
+    series = series.shift(1)
+    results = [
+        sm.OLS(diffs[i:].to_numpy(), series[i:].to_numpy()).fit().tvalues[0]
+        for i in test_indicies
+    ]
+    return pd.Series(results, test_indicies)
