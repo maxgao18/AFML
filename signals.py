@@ -228,10 +228,30 @@ def chow_type_dickey_fuller_statistic(
         end_idx = int(len(series.index) * (1 - avoid_endpoints_percent))
         test_indicies = series.iloc[start_idx + 1 : end_idx].index
 
-    diffs = series.diff()
-    series = series.shift(1)
     results = [
-        sm.OLS(diffs[i:].to_numpy(), series[i:].to_numpy()).fit().tvalues[0]
+        sts.adfuller(series[i:].to_numpy(), maxlag=0, regression="n", autolag=None)[0]
         for i in test_indicies
     ]
     return pd.Series(results, test_indicies)
+
+
+def supremum_augmented_dickey_fuller_statistic(
+    series: pd.Series,
+    min_window_size: int,
+    max_window_size=None,
+    window_step: int = 1,
+    stat_step: int = 1,
+    **kwargs
+):
+    results = []
+    stat_start = min_window_size + (series.size - min_window_size) % stat_step
+    series_np = series.to_numpy()
+    for i in range(stat_start, series.size, stat_step):
+        window_start = 0 if max_window_size is None else max(0, i - max_window_size)
+        results.append(
+            max(
+                sts.adfuller(series_np[s:i], regression="c", **kwargs)[0]
+                for s in range(window_start, i - min_window_size + 1, window_step)
+            )
+        )
+    return pd.Series(results, series.iloc[stat_start::stat_step].index)
