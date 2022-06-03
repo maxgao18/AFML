@@ -4,6 +4,7 @@ import statsmodels.api as sm
 import statsmodels.tsa.stattools as sts
 
 from collections.abc import Iterable
+from typing import Optional
 
 import c
 
@@ -235,7 +236,7 @@ def chow_type_dickey_fuller_statistic(
     return pd.Series(results, test_indicies)
 
 
-def supremum_augmented_dickey_fuller_statistic(
+def all_augmented_dickey_fuller_statistic(
     series: pd.Series,
     min_window_size: int,
     max_window_size=None,
@@ -249,9 +250,77 @@ def supremum_augmented_dickey_fuller_statistic(
     for i in range(stat_start, series.size, stat_step):
         window_start = 0 if max_window_size is None else max(0, i - max_window_size)
         results.append(
-            max(
-                sts.adfuller(series_np[s:i], regression="c", **kwargs)[0]
-                for s in range(window_start, i - min_window_size + 1, window_step)
+            np.array(
+                [
+                    sts.adfuller(series_np[s:i], regression="c", **kwargs)[0]
+                    for s in range(window_start, i - min_window_size + 1, window_step)
+                ]
             )
         )
     return pd.Series(results, series.iloc[stat_start::stat_step].index)
+
+
+def supremum_augmented_dickey_fuller_statistic(
+    *args, stats: Optional[pd.Series] = None, **kwargs
+):
+    if stats is None:
+        stats = all_augmented_dickey_fuller_statistic(*args, **kwargs)
+    return stats.map(max)
+
+
+def conditional_augmented_dickey_fuller_statistic(
+    percentile: float,
+    *args,
+    stats: Optional[pd.Series] = None,
+    with_stddev: bool = False,
+    **kwargs
+):
+    percentile = 1 - percentile
+
+    def get_percentile(arr):
+        if not hasattr(arr, "__len__"):
+            return np.nan
+
+        n = int(np.ceil(len(arr) * percentile))
+        return np.sort(arr)[-n:]
+
+    if stats is None:
+        stats = all_augmented_dickey_fuller_statistic(*args, **kwargs)
+    percentiles = stats.map(get_percentile)
+
+    if with_stddev:
+        return percentiles.map(np.mean), percentiles.map(np.std)
+    return percentiles.map(np.mean)
+
+
+def quantile_augmented_dickey_fuller_statistic(
+    quantile: float,
+    *args,
+    stats: Optional[pd.Series] = None,
+    dispersion_window_size: Optional[float] = None,
+    **kwargs
+):
+    def get_quantile(arr):
+        if not hasattr(arr, "__len__"):
+            return np.nan
+
+        i = int(len(arr) * quantile)
+        s = np.sort(arr)
+        return s[i]
+
+    def dispersion(arr):
+        if not hasattr(arr, "__len__"):
+            return np.nan
+
+        h = int(len(arr) * (quantile + dispersion_window_size / 2))
+        l = int(len(arr) * (quantile - dispersion_window_size / 2))
+        s = np.sort(arr)
+        return s[h] - s[l]
+
+    if stats is None:
+        stats = all_augmented_dickey_fuller_statistic(*args, **kwargs)
+    quantiles = stats.map(get_quantile)
+
+    if dispersion_window_size is not None:
+        return quantiles, stats.map(dispersion)
+    return quantiles
