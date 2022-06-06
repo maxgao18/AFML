@@ -1,5 +1,7 @@
 import os
+import json
 
+import numpy as np
 import pandas as pd
 
 
@@ -21,6 +23,20 @@ def fetch(path, files, **kwargs):
     if len(files) == 1:
         return list(data.values())[0]
     return data
+
+
+def fetch_book(*args, **kwargs):
+    books_data = fetch(*args, **kwargs)
+    books_data["Bids"] = books_data["Bids"].apply(json.loads)
+    books_data["Asks"] = books_data["Asks"].apply(json.loads)
+    books_data["best_bid"] = books_data["Bids"].apply(
+        lambda x: max(float(k) for k in x.keys()) if len(x) > 0 else np.nan
+    )
+    books_data["best_ask"] = books_data["Asks"].apply(
+        lambda x: min(float(k) for k in x.keys()) if len(x) > 0 else np.nan
+    )
+    books_data["spread"] = books_data["best_ask"] - books_data["best_bid"]
+    return books_data
 
 
 def fetch_all(path, **kwargs):
