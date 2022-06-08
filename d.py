@@ -35,6 +35,19 @@ def fetch_book(*args, **kwargs):
     books_data["best_ask"] = books_data["Asks"].apply(
         lambda x: min(float(k) for k in x.keys()) if len(x) > 0 else np.nan
     )
+    books_data["best_bid_size"] = books_data.apply(
+        lambda r: np.nan
+        if pd.isnull(r["best_bid"])
+        else sum(r["Bids"][str(r["best_bid"])]),
+        axis=1,
+    )
+    books_data["best_ask_size"] = books_data.apply(
+        lambda r: np.nan
+        if pd.isnull(r["best_ask"])
+        else sum(r["Asks"][str(r["best_ask"])]),
+        axis=1,
+    )
+
     books_data["spread"] = books_data["best_ask"] - books_data["best_bid"]
     return books_data
 
