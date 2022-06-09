@@ -16,13 +16,48 @@ def apply_tick_rule(prices: pd.Series):
     for i, e in enumerate(direction):
         if e == c.Dir.U:
             direction[i] = direction[i - 1]
-
     return direction
 
 
 def rolls_spread_estimate(trade_prices: pd.Series):
     diff = trade_prices.diff().dropna()
     return 2 * np.sqrt(-diff.autocorr() * diff.var())
+
+
+def corwin_schultz_spread_estimate(
+    bars: pd.DataFrame, rolling_window, as_percent_of_price: bool = False, **kwargs
+):
+    hi = bars["High"]
+    lo = bars["Low"]
+
+    def beta():
+        log_hi_lo_sq = np.square(np.log(hi / lo))
+        return (
+            (log_hi_lo_sq + log_hi_lo_sq.shift(1))
+            .rolling(rolling_window, **kwargs)
+            .mean()
+        )
+
+    def gamma():
+        hi_window = pd.DataFrame([hi, hi.shift(1)]).max()
+        lo_window = pd.DataFrame([lo, lo.shift(1)]).min()
+
+        return np.square(np.log(hi_window / lo_window))
+
+    def alpha():
+        c1 = (np.sqrt(2) - 1) / (3 - 2 * np.sqrt(2))
+        c2 = 1 / np.sqrt(3 - 2 * np.sqrt(2))
+        a = c1 * np.sqrt(beta()) - c2 * np.sqrt(gamma())
+        return a.clip(lower=0)
+
+    def spread_as_percent():
+        a = np.exp(alpha())
+        return 2 * (a - 1) / (1 + a)
+
+    spread = spread_as_percent()
+    if not as_percent_of_price:
+        spread *= bars["Close"]
+    return spread
 
 
 def volatility_estimator(
