@@ -2,6 +2,7 @@ import math
 
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
 
 import c
 
@@ -41,7 +42,6 @@ def corwin_schultz_spread_estimate(
     def gamma():
         hi_window = pd.DataFrame([hi, hi.shift(1)]).max()
         lo_window = pd.DataFrame([lo, lo.shift(1)]).min()
-
         return np.square(np.log(hi_window / lo_window))
 
     def alpha():
@@ -112,3 +112,51 @@ def close_close_volatility_estimator(bars, *args, **kwargs):
     bars["prev_close"] = bars["Close"].shift(1)
     bars = bars.iloc[1:]
     return volatility_estimator("Close", "prev_close", 1, bars, *args, **kwargs)
+
+
+def amihuds_lambda_estimator(
+    bars,
+    rolling_window=None,
+    use_close_close=True,
+    with_t_value: bool = False,
+    **kwargs
+):
+    def amihuds_lambda(bars):
+        bars = bars.dropna()
+        if len(bars.index) <= 2:
+            if with_t_value:
+                return np.nan, np.nan
+            return np.nan
+
+        fit = sm.OLS(bars.iloc[:, 0].to_numpy(), bars.iloc[:, 1].to_numpy()).fit()
+        if with_t_value:
+            return fit.params[0], fit.tvalues[0]
+        return fit.params[0]
+
+    log_price_change = (
+        np.log(bars["Open"])
+        if "Open" in bars and not use_close_close
+        else np.log(bars["Close"].shift(1))
+    )
+    log_price_change = np.abs(log_price_change - np.log(bars["Close"]))
+    dv = bars["dv"] if "dv" in bars else bars["Close"] * bars["Volume"]
+
+    data = pd.concat([log_price_change, dv], axis=1)
+    if rolling_window is None:
+        return amihuds_lambda(data)
+
+    # This code is garbage
+    result = []
+    rolling = data.iloc[:, 0].rolling(rolling_window, **kwargs)
+    i = rolling.apply(
+        lambda x: result.append(amihuds_lambda(data.loc[x.index])) or 0, raw=False
+    )
+
+    if with_t_value:
+        d = pd.Series([s[0] for s in result], index=i.index[-len(result) :])
+        d.name = "Amihuds Lambda"
+        t = pd.Series([s[1] for s in result], index=i.index[-len(result) :])
+        t.name = "t-stat"
+        return d, t
+
+    return pd.Series(result, index=i.index)
