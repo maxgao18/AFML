@@ -148,15 +148,39 @@ def amihuds_lambda_estimator(
     # This code is garbage
     result = []
     rolling = data.iloc[:, 0].rolling(rolling_window, **kwargs)
-    i = rolling.apply(
+    rolling.apply(
         lambda x: result.append(amihuds_lambda(data.loc[x.index])) or 0, raw=False
     )
+    index = rolling.apply(lambda _: 1, raw=False)
 
     if with_t_value:
-        d = pd.Series([s[0] for s in result], index=i.index[-len(result) :])
+        d = pd.Series([s[0] for s in result], index=index.dropna().index)
         d.name = "Amihuds Lambda"
-        t = pd.Series([s[1] for s in result], index=i.index[-len(result) :])
+        t = pd.Series([s[1] for s in result], index=index.dropna().index)
         t.name = "t-stat"
         return d, t
-
     return pd.Series(result, index=i.index)
+
+
+def volume_probability_of_informed_trading(bars, **kwargs):
+    buy_volume = None
+    use_mean = True
+    if "buy_volume" in bars:
+        buy_volume = bars["buy_volume"]
+    elif "avg_dir" in bars:
+        buy_volume = bars["Volume"] * (bars["avg_dir"] + 1) / 2
+    else:
+        buy_volume = (bars["Volume"] * bars["dir"]).clip(lower=0)
+        use_mean = False
+
+    if buy_volume is None:
+        return None
+
+    sell_volume = bars["Volume"] - buy_volume
+    inbalance = sell_volume - buy_volume
+    if use_mean:
+        inbalance = inbalance.abs()
+    inbalance = inbalance.rolling(**kwargs).sum().abs()
+    total_volume = bars["Volume"].rolling(**kwargs).sum()
+
+    return inbalance / total_volume

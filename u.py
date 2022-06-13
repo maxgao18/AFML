@@ -7,6 +7,12 @@ from sklearn.datasets import make_classification
 import c
 
 
+def index_as_string(df):
+    df = df.copy()
+    df.index = df.index.to_series().apply(str)
+    return df
+
+
 def as_timeseries(data, round_to=None):
     n_samples = len(data)
     index = pd.date_range(
@@ -72,6 +78,10 @@ def explosive_process_data(
             ),
         )
     )
+
+
+def during_market_hours(df, market_open=dt.time(9, 30), market_close=dt.time(16, 0)):
+    return df.iloc[df.index.indexer_between_time(market_open, market_close)]
 
 
 def add_volume_data(df, mu: float = 100.0, var: float = 10.0):

@@ -92,6 +92,13 @@ def _with_close(group):
     return groups, bars
 
 
+def _apply(group, apply):
+    if apply is not None:
+        groups, bars = group
+        bars = apply(groups, bars)
+    return groups, bars
+
+
 def _create_bars(data, indices):
     g = _group_bars(data, indices)
     g = _with_open(g)
@@ -101,24 +108,27 @@ def _create_bars(data, indices):
     return g
 
 
-def create_tick_bars(data, rate):
+def create_tick_bars(data, rate, apply=None):
     data["tmp"] = 1
     indices = _create_bar_indices(data["tmp"], rate)
     g = _create_bars(data, indices)
+    g = _apply(g, apply)
     return _get_bars(g)
 
 
-def create_dollar_volume_bars(data, rate):
+def create_dollar_volume_bars(data, rate, apply=None):
     indices = _create_bar_indices(data["dv"], rate)
     g = _create_bars(data, indices)
     g = _with_dv(g)
+    g = _apply(g, apply)
     return _get_bars(g)
 
 
-def create_volume_bars(data, rate):
+def create_volume_bars(data, rate, apply=None):
     indices = _create_bar_indices(data["Volume"], rate)
     g = _create_bars(data, indices)
     g = _with_dv(g)
+    g = _apply(g, apply)
     return _get_bars(g)
 
 
