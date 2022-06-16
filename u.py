@@ -27,12 +27,20 @@ def as_timeseries(data, round_to=None):
 
 
 def ar1_process(
-    rho: float, mu: float, stddev: float, n_samples: int, initial_value: float = 0
+    rho: float,
+    mu: float,
+    stddev: float,
+    n_samples: int,
+    initial_value: float = 0,
+    target_value=None,
 ):
+    if target_value is None:
+        target_value = initial_value
+
     a = np.random.normal(mu, stddev, n_samples)
     a[0] = initial_value
     for i in range(1, n_samples):
-        a[i] += rho * a[i - 1]
+        a[i] += target_value + rho * (a[i - 1] - target_value)
     return a
 
 
@@ -42,8 +50,19 @@ def create_price_data(
     mu: float = 0.0,
     stddev: float = 0.01,
     n_samples: int = 1000000,
+    use_exp: bool = True,
+    rho=None,
+    **kwargs,
 ):
-    i = np.exp(ar1_process(1 - theta, mu, stddev, n_samples)) * start_price
+    if rho is not None:
+        theta = 1 - rho
+    if use_exp:
+        i = (
+            np.exp(ar1_process(1 - theta, mu, stddev, n_samples, **kwargs))
+            * start_price
+        )
+    else:
+        i = ar1_process(1 - theta, mu, stddev, n_samples, start_price, **kwargs)
     return as_timeseries(i, round_to=2)
 
 
