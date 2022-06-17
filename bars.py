@@ -50,6 +50,10 @@ def _create_imbalance_bar_indices(
     return indices
 
 
+def _column_or_default(group, colname, default: str = "Close"):
+    return group[colname] if colname in group.obj.columns else group[default]
+
+
 def _group_bars(data, indices):
     groups = data.reset_index().groupby(indices.cumsum())
     bars = groups[["Volume"]].sum()
@@ -70,31 +74,33 @@ def _with_dv(group):
 
 def _with_open(group):
     groups, bars = group
-    bars["Open"] = groups["Close"].first()
+    bars["Open"] = _column_or_default(groups, "Open").first()
+    # bars["Open"] = groups["Close"].first()
     return groups, bars
 
 
 def _with_low(group):
     groups, bars = group
-    bars["Low"] = groups["Close"].min()
+    bars["Low"] = _column_or_default(groups, "Low").min()
+    # bars["Low"] = groups["Close"].min()
     return groups, bars
 
 
 def _with_high(group):
     groups, bars = group
-    bars["High"] = groups["Close"].max()
+    bars["High"] = _column_or_default(groups, "High").max()
     return groups, bars
 
 
 def _with_close(group):
     groups, bars = group
-    bars["Close"] = groups["Close"].last()
+    bars["Close"] = _column_or_default(groups, "Close").last()
     return groups, bars
 
 
 def _apply(group, apply):
+    groups, bars = group
     if apply is not None:
-        groups, bars = group
         bars = apply(groups, bars)
     return groups, bars
 
@@ -117,6 +123,8 @@ def create_tick_bars(data, rate, apply=None):
 
 
 def create_dollar_volume_bars(data, rate, apply=None):
+    if "dv" not in data:
+        data["dv"] = data["Volume"] * data["Close"]
     indices = _create_bar_indices(data["dv"], rate)
     g = _create_bars(data, indices)
     g = _with_dv(g)

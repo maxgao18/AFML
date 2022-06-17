@@ -68,3 +68,18 @@ def simulate_price_target_stop_loss_mesh(
 
 def half_life_to_rho(hl: float):
     return 2 ** (-1 / hl)
+
+def rho_to_half_life(rho: float):
+    return - np.log(2) / np.log(rho)
+
+
+def estimate_ou_parameters(series: pd.Series, target: float, as_series: bool = False):
+    prices = series.iloc[1:].to_numpy()
+    deviance = series.iloc[:-1].to_numpy() - target
+    vcov = np.cov(prices, deviance)
+    rho = vcov[0, 1] / vcov[1, 1]
+    error = (prices - target) - rho * deviance
+    stddev = error.std()
+    if as_series:
+        return pd.Series({"rho": rho, "stddev": stddev})
+    return rho, stddev

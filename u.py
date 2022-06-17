@@ -45,7 +45,7 @@ def ar1_process(
 
 
 def create_price_data(
-    start_price: float = 1000.00,
+    start_price: float = 1000.0,
     theta: float = 0.001,
     mu: float = 0.0,
     stddev: float = 0.01,
